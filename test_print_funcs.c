@@ -11,7 +11,7 @@ void memset32(int* fdest, int color, size_t count) {
 void draw_rect(int* fdest, int fwidth, int fheight, int x, int y, int width, int height, size_t color) {
     if ((x + width) > fwidth || (y + height) > fheight) return;
     for (int cy = y; cy < y + height; cy++) {
-        memset32(fdest + fwidth * y + x, color, width);
+        memset32(fdest + fwidth * cy + x, color, width);
     }
 }
 

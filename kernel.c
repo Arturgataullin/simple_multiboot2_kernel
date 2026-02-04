@@ -3,9 +3,11 @@
 #include <stdint.h>
 #include <stddef.h>
 
+
 #define MULTIBOOT_MAGIC 0x36D76289
 #define MULTIBOOT_TAG_TYPE_FRAMEBUFFER 8
-
+#define PS2_STATUS 0x64
+#define PS2_DATA 0x60
 typedef struct {
     uint32_t type;
     uint32_t size;
@@ -69,7 +71,7 @@ void memset32(uint32_t* fdest, uint32_t color, size_t count) {
 void draw_rect(uint32_t* fdest, uint32_t fwidth, uint32_t fheight, uint32_t x, uint32_t y, uint32_t width, uint32_t height, size_t color) {
     if ((x + width) > fwidth || (y + height) > fheight) return;
     for (uint32_t cy = y; cy < y + height; cy++) {
-        memset32(fdest + fwidth * y + x, color, width);
+        memset32(fdest + fwidth * cy + x, color, width);
     }
 }
 
@@ -121,6 +123,38 @@ static void serial_print_hex(uint64_t v) {
         serial_putc(hex[(v >> i) & 0xF]);
 }
 
+static inline int ps2_has_scancode() {
+    return (inb(PS2_STATUS) & 0x01) != 0;
+}
+
+static inline uint8_t ps2_read_scancode() {
+    return inb(PS2_DATA);
+}
+
+static inline int is_key_release(uint8_t sc) {
+    return (sc & 0x80) != 0; //если клавиша отпущена - sc = 0x80
+} 
+
+volatile uint32_t g_color = 0x000000;
+
+static void handle_scancode(uint8_t sc) {
+    if (is_key_release(sc)) return;
+    switch (sc)
+    {
+    case 0x02:
+        g_color = 0xFF0000;
+        break;
+    case 0x03:
+        g_color = 0x00FF00;
+        break;
+    case 0x04:
+        g_color = 0x0000FF;
+        break;
+    default:
+        g_color = 0x000000;
+        break;
+    }
+}
 
 void kernel_main(uint32_t magic, uintptr_t mb_info_addr) {
 
@@ -150,7 +184,7 @@ void kernel_main(uint32_t magic, uintptr_t mb_info_addr) {
     uint32_t width = fb->framebuffer_width;
     uint32_t height = fb->framebuffer_height;
 
-    draw_rect(fdest, width, height, width/2, height/2, 200, 200, 0x00FF00);
+    //draw_rect(fdest, width, height, width/2, height/2, 200, 200, 0x00FF00);
 
     // serial_print("Hdr            = "); serial_print_hex((uint64_t)(uintptr_t)&st->Hdr); serial_print("\n");
     // serial_print("FirmwareVendor = "); serial_print_hex((uint64_t)(uintptr_t)st->FirmwareVendor); serial_print("\n");
@@ -166,6 +200,13 @@ void kernel_main(uint32_t magic, uintptr_t mb_info_addr) {
     // serial_print("ConfigTables   = "); serial_print_hex((uint64_t)st->NumberOfTableEntries); serial_print("\n");
     // serial_print("ConfigTablePtr = "); serial_print_hex((uint64_t)(uintptr_t)st->ConfigurationTable); serial_print("\n");
 
-    while (1);
+    while (1) {
+        if (ps2_has_scancode) {
+            uint8_t sc = ps2_read_scancode();
+            handle_scancode(sc);
+            draw_rect(fdest, width, height, width/2, height/2, 300, 300, g_color);
+        }
+        
+    }
 }
 
