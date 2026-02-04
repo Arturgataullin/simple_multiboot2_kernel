@@ -17,7 +17,6 @@ typedef struct {
 //     uint64_t efi_system_table;
 // };
 
-
 // typedef uint64_t EFI_HANDLE;
 // typedef uint64_t UINTN;
 // typedef uint32_t UINT32;
@@ -70,57 +69,57 @@ void memset32(uint32_t* fdest, uint32_t color, size_t count) {
 void draw_rect(uint32_t* fdest, uint32_t fwidth, uint32_t fheight, uint32_t x, uint32_t y, uint32_t width, uint32_t height, size_t color) {
     if ((x + width) > fwidth || (y + height) > fheight) return;
     for (uint32_t cy = y; cy < y + height; cy++) {
-        memset32(fwidth * (y - 1) + x, color, width);
+        memset32(fdest + fwidth * y + x, color, width);
     }
 }
 
-// #define COM1 0x3F8
+#define COM1 0x3F8
 
-// // запись в порт
-// static inline void outb(uint16_t port, uint8_t val) {
-//     __asm__ volatile ("outb %0, %1" : : "a"(val), "Nd"(port));
-// }
+// запись в порт
+static inline void outb(uint16_t port, uint8_t val) {
+    __asm__ volatile ("outb %0, %1" : : "a"(val), "Nd"(port));
+}
 
-// // чтение из порта
-// static inline uint8_t inb(uint16_t port) {
-//     uint8_t ret;
-//     __asm__ volatile ("inb %1, %0" : "=a"(ret) : "Nd"(port));
-//     return ret;
-// }
+// чтение из порта
+static inline uint8_t inb(uint16_t port) {
+    uint8_t ret;
+    __asm__ volatile ("inb %1, %0" : "=a"(ret) : "Nd"(port));
+    return ret;
+}
 
-// static void serial_init(void) {
-//     outb(COM1 + 1, 0x00);
-//     outb(COM1 + 3, 0x80);
-//     outb(COM1 + 0, 0x03);
-//     outb(COM1 + 1, 0x00);
-//     outb(COM1 + 3, 0x03);
-//     outb(COM1 + 2, 0xC7);
-//     outb(COM1 + 4, 0x0B);
-// }
+static void serial_init(void) {
+    outb(COM1 + 1, 0x00);
+    outb(COM1 + 3, 0x80);
+    outb(COM1 + 0, 0x03);
+    outb(COM1 + 1, 0x00);
+    outb(COM1 + 3, 0x03);
+    outb(COM1 + 2, 0xC7);
+    outb(COM1 + 4, 0x0B);
+}
 
-// static int serial_ready(void) {
-//     return (inb(COM1 + 5) & 0x20) != 0;
-// }
+static int serial_ready(void) {
+    return (inb(COM1 + 5) & 0x20) != 0;
+}
 
-// static void serial_putc(char c) {
-//     while (!serial_ready()) { }
-//     outb(COM1, (uint8_t)c);
-// }
+static void serial_putc(char c) {
+    while (!serial_ready()) { }
+    outb(COM1, (uint8_t)c);
+}
 
-// static void serial_print(const char *s) {
-//     while (*s) {
-//         char c = *s++;
-//         if (c == '\n') serial_putc('\r');
-//         serial_putc(c);
-//     }
-// }
+static void serial_print(const char *s) {
+    while (*s) {
+        char c = *s++;
+        if (c == '\n') serial_putc('\r');
+        serial_putc(c);
+    }
+}
 
-// static void serial_print_hex(uint64_t v) {
-//     static const char hex[] = "0123456789ABCDEF";
-//     serial_print("0x");
-//     for (int i = 60; i >= 0; i -= 4)
-//         serial_putc(hex[(v >> i) & 0xF]);
-// }
+static void serial_print_hex(uint64_t v) {
+    static const char hex[] = "0123456789ABCDEF";
+    serial_print("0x");
+    for (int i = 60; i >= 0; i -= 4)
+        serial_putc(hex[(v >> i) & 0xF]);
+}
 
 
 void kernel_main(uint32_t magic, uintptr_t mb_info_addr) {
